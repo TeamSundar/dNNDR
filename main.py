@@ -1,1 +1,3 @@
 import pandas
+# Python modules used for API access...
+from chembl_webresource_client.new_client import new_client
