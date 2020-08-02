@@ -13,6 +13,7 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import Counter
+from sklearn.model_selection import train_test_split
 # from rdkit import Chem
 # from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator as md
 # from rdkit import DataStructs
@@ -228,6 +229,9 @@ class MODEL:
         test_score = model.evaluate(test[0], test[1], batch_size=batch_size, verbose=1)
         print('Test loss: ', test_score[0])
         print('Test accuracy: ', test_score[1])
+    
+    def split(self, features, i):
+        indices = list(range(features.shape[0]))
+        train_indices, test_indices = train_test_split(indices, test_size=0.2, random_state=i)
+        return train_indices, test_indices
         
-
-
