@@ -10,10 +10,13 @@ import urllib.parse
 import urllib.request
 import wget
 import os
-from rdkit import Chem
-from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator as md
-from rdkit import DataStructs
-from chembl_webresource_client.new_client import new_client
+import seaborn as sns
+import matplotlib.pyplot as plt
+from collections import Counter
+# from rdkit import Chem
+# from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator as md
+# from rdkit import DataStructs
+#from chembl_webresource_client.new_client import new_client
 from tqdm import tqdm
 
 class PROCESS:
@@ -65,6 +68,7 @@ class PROCESS:
         chembl2uniprot = pd.read_csv(pathToMapping, sep='\t', header=None)  #Import CHEMBL_ID to uniprot_ID mapping
         units=['nM','uM','pM','mM']     # Units to be selected
         DTI_screened_units = DTI.loc[DTI['unit'].isin(units)]   # Extract datapoints with required units
+        DTI_screened_units = DTI_screened_units[DTI_screened_units['IC50'].notnull()]
         DTI_screened_mapping = DTI_screened_units[DTI_screened_units['target'].isin(chembl2uniprot[0].tolist())]    # Extract datapoints for which uniprot_ID ia available
         DTI_screened_mapping.to_csv(pathToOutput)
 
@@ -138,5 +142,92 @@ class PROCESS:
             fset = fset.append(enc)
         fset.to_csv('data/target_'+ des_type + '.csv')
         return fset
+
+class MODEL:
+    def __init__(self):
+        pass
+
+    def plot_seq_count(self, df, data_name):
+        sns.distplot(df['seq_char_count'].values)
+        plt.title(f'Sequence char count: {data_name}')
+        plt.grid(True)
+
+    def get_code_freq(self, df, data_name):
+        df = df.apply(lambda x: " ".join(x))
+        codes = []
+        for i in df: # concatination of all codes
+            codes.extend(i)
+        codes_dict= Counter(codes)
+        codes_dict.pop(' ') # removing white space
+
+        print(f'Codes: {data_name}')
+        print(f'Total unique codes: {len(codes_dict.keys())}')
+
+        df = pd.DataFrame({'Code': list(codes_dict.keys()), 'Freq': list(codes_dict.values())})
+        return df.sort_values('Freq', ascending=False).reset_index()[['Code', 'Freq']]
+
+    def plot_code_freq(self, df, data_name):
+        plt.title(f'Code frequency: {data_name}')
+        sns.barplot(x='Code', y='Freq', data=df)
+        plt.grid(True)
+
+    def create_dict(self, codes):
+        char_dict = {}
+        for index, val in enumerate(codes):
+            char_dict[val] = index+1
+        return char_dict
+
+    def integer_encoding(self, data, dict):
+        """
+        - Encodes code sequence to integer values.
+        - 20 common amino acids are taken into consideration
+        and rest 4 are categorized as 0.
+        """
+        encode_list = []
+        for row in data['seq'].values:
+            row_encode = []
+            for code in row:
+                row_encode.append(dict.get(code, 0))
+            encode_list.append(np.array(row_encode))
+        return encode_list
+
+    def plot_history(self, history):
+        acc = history.history['accuracy']
+        val_acc = history.history['val_accuracy']
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
+        x = range(1, len(acc) + 1)
+
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(x, acc, 'b', label='Training acc')
+        plt.plot(x, val_acc, 'r', label='Validation acc')
+        plt.title('Training and validation accuracy')
+        plt.legend()
+        plt.grid()
+
+        plt.subplot(1, 2, 2)
+        plt.plot(x, loss, 'b', label='Training loss')
+        plt.plot(x, val_loss, 'r', label='Validation loss')
+        plt.title('Training and validation loss')
+        plt.legend()
+        plt.grid()
+
+    def display_model_score(self, model, train, val, test, batch_size):
+
+        train_score = model.evaluate(train[0], train[1], batch_size=batch_size, verbose=1)
+        print('Train loss: ', train_score[0])
+        print('Train accuracy: ', train_score[1])
+        print('-'*70)
+
+        val_score = model.evaluate(val[0], val[1], batch_size=batch_size, verbose=1)
+        print('Val loss: ', val_score[0])
+        print('Val accuracy: ', val_score[1])
+        print('-'*70)
+
+        test_score = model.evaluate(test[0], test[1], batch_size=batch_size, verbose=1)
+        print('Test loss: ', test_score[0])
+        print('Test accuracy: ', test_score[1])
+        
 
 
