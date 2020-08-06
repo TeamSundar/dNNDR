@@ -2,7 +2,7 @@
 
 > Deep neural network assisted drug recommendation (dNNDR) system
 
-Naming convention: **X DXXX TX** | **12 3456 78**
+Naming convention: **X DXXX TXX** | **12 3456 78**
 
 1. C: *Classification*, R: *Regression*
 2. D: *Drug*
