@@ -8,7 +8,7 @@ import pandas as pd
 import pickle
 import urllib.parse
 import urllib.request
-import wget
+#import wget
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -129,19 +129,22 @@ class PROCESS:
         return None
     
     # Extract protein descriptors for retrieved targets
-    def extractProteinDes(self, des_type, pathToData):
+    def extractProteinDes(self, des_type, pathToData, pathToOutput):
         fset = pd.DataFrame()
         chembl2uniprot = pd.read_csv(pathToData, sep='\t', header=None)
         des_type = des_type
         for CHEMBL_ID, uniprot_ID in zip(chembl2uniprot[0], chembl2uniprot[1]):
-            print(CHEMBL_ID, uniprot_ID)
-            push ='python F:/Projects/202004_DrugTargetNN/iFeature/iFeature.py --file %s --type %s'%('data/fasta/'+uniprot_ID+'.fasta', des_type)
+            #print(CHEMBL_ID, uniprot_ID)
+            try:
+                push ='python /home/dell15/KING/Work_ubuntu/Projects/20200703_drugTarget2/src2/dNNDR/iFeature-master/iFeature.py --file %s --type %s'%('/home/dell15/KING/Work_ubuntu/Projects/20200703_drugTarget2/src2/dNNDR/data/fasta_968/'+uniprot_ID+'.fasta', des_type)
+            except:
+                print('Fasta not found')
             os.system(push)
             enc = pd.read_csv('encoding.tsv', delimiter='\t', encoding='utf-8')
             enc['uniprot_ID'] = uniprot_ID
             enc['CHEMBL_ID'] = CHEMBL_ID
             fset = fset.append(enc)
-        fset.to_csv('data/target_'+ des_type + '.csv')
+        fset.to_csv(pathToOutput+'/'+ des_type + '.csv')
         return fset
 
 class MODEL:
