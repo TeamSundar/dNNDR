@@ -14,6 +14,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import Counter
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import average_precision_score
+from sklearn.metrics import roc_curve, auc
 # from rdkit import Chem
 # from rdkit.ML.Descriptors.MoleculeDescriptors import MolecularDescriptorCalculator as md
 # from rdkit import DataStructs
@@ -147,9 +150,9 @@ class PROCESS:
         fset.to_csv(pathToOutput+'/'+ des_type + '.csv')
         return fset
 
-class MODEL:
-    def __init__(self):
-        pass
+class ANALYSIS:
+    def __init__(self, EXP):
+        self.EXP = EXP
 
     def plot_seq_count(self, df, data_name):
         sns.distplot(df['seq_char_count'].values)
@@ -195,24 +198,116 @@ class MODEL:
             encode_list.append(np.array(row_encode))
         return encode_list
 
-    def plot_history(self, history):
+
+    def roc(self, model, label, **kwargs):
+        data = []
+        for key in kwargs:
+            data.append(kwargs[key])
+        y_pred_keras = model.predict(data)
+
+        # Compute ROC/AUC
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+
+        for i in range(3):
+            fpr[i], tpr[i], _ = roc_curve(label[:, i], y_pred_keras[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+        return roc_auc, fpr, tpr
+
+    def aupr(self, model, label, **kwargs):
+        data = []
+        for key in kwargs:
+            data.append(kwargs[key])
+        y_pred_keras = model.predict(data)
+
+        # compute PR/AUPR
+        precision, recall, average_precision = dict(), dict(), dict()
+
+        for i in range(3):
+            precision[i], recall[i], _ = precision_recall_curve(label[:, i], y_pred_keras[:, i])
+            average_precision[i] = average_precision_score(label[:, i], y_pred_keras[:, i])
+
+        # A "micro-average": quantifying score on all classes jointly
+        precision["micro"], recall["micro"], _ = precision_recall_curve(label.ravel(), y_pred_keras.ravel())
+        average_precision["micro"] = average_precision_score(label, y_pred_keras, average="micro")
+        #print('Average precision score , micro-averaged over all classes: {0:0.2f}'
+        #    .format(average_precision["micro"]))
+        return  precision, recall, average_precision
+
+    def plotROC_PR(self, fpr, tpr, roc_auc, precision, recall, average_precision, save):
+        fig, ax = plt.subplots(1,2,figsize=(12,5))
+
+        for i, activity in zip(range(3),['Active', 'Intermediate','Inactive']):
+            ax[0].plot(fpr[i], tpr[i], label=activity+' (AUC: %0.2f)' % roc_auc[i], alpha=1)
+        ax[0].plot([0, 1], [0, 1], 'k--')
+        ax[0].set_ylim([0.0, 1.01])
+        ax[0].set_xlim([0.0, 1.01])
+        ax[0].set_yticks(np.arange(0, 1.1, 0.1))
+        ax[0].set_xticks(np.arange(0, 1.1, 0.1))
+        ax[0].set_title('ROC curves for all three classes', fontsize=14)
+        ax[0].set_xlabel('False Positive Rate', fontsize=14)
+        ax[0].set_ylabel('True Positive Rate', fontsize=14)
+        #ax.set_title('Receiver operating characteristic ('+train_test+')', fontsize=14)
+        ax[0].tick_params(axis="x", labelsize=12)
+        ax[0].tick_params(axis="y", labelsize=12) 
+        ax[0].grid(linestyle='-.', linewidth=0.7)
+        ax[0].legend(fontsize=12)
+
+        ax[1].step(recall['micro'], precision['micro'], where='post')
+        ax[1].set_xlabel('Recall', fontsize=14)
+        ax[1].set_ylabel('Precision', fontsize=14)
+        ax[1].plot([0, 1], [1, 0], 'k--')
+        ax[1].set_ylim([0.0, 1.01])
+        ax[1].set_xlim([0.0, 1.00])
+        ax[1].set_yticks(np.arange(0, 1.1, 0.1))
+        ax[1].set_xticks(np.arange(0, 1.1, 0.1))
+        ax[1].set_title(
+            'Micro-averaged AUPR for classes: AP={0:0.2f}'
+            .format(average_precision["micro"]), fontsize=14)
+        ax[1].tick_params(axis="x", labelsize=12)
+        ax[1].tick_params(axis="y", labelsize=12) 
+        ax[1].grid(linestyle='-.', linewidth=0.7)
+
+        if save:
+            plt.savefig('plots/'+self.EXP+'_ROC_PR.png', dpi=500, format = 'png', bbox_inches='tight')
+        return None
+
+    def plotTrainingPerf(self, history, save):
+        #  Training performance
+        fig, ax = plt.subplots(1,2,figsize=(12,5))
+
         acc = history.history['accuracy']
         val_acc = history.history['val_accuracy']
         loss = history.history['loss']
         val_loss = history.history['val_loss']
         x = range(1, len(acc) + 1)
 
-        plt.figure(figsize=(12, 5))
-        plt.subplot(1, 2, 1)
-        plt.plot(x, acc, 'b', label='Training acc')
-        plt.plot(x, val_acc, 'r', label='Validation acc')
-        plt.title('Training and validation accuracy')
-        plt.legend()
-        plt.grid()
+        ax[0].plot(x, acc, 'b', label='Training acc')
+        ax[0].plot(x, val_acc, 'r', label='Validation acc')
+        ax[0].set_title('Training and validation accuracy')
+        ax[0].set_xlabel('Epoch', fontsize=14)
+        ax[0].set_ylabel('Accuracy', fontsize=14)
+        ax[0].tick_params(axis="x", labelsize=12)
+        ax[0].tick_params(axis="y", labelsize=12)
+        ax[0].set_ylim([0,1])
+        ax[0].set_xticks(np.arange(0, 350, 50))
+        #ax[0].set_yticks(np.arange(0, 1, 0.1))
+        ax[0].legend(fontsize=12)
+        ax[0].grid(linestyle='-.', linewidth=0.7)
 
-        plt.subplot(1, 2, 2)
-        plt.plot(x, loss, 'b', label='Training loss')
-        plt.plot(x, val_loss, 'r', label='Validation loss')
-        plt.title('Training and validation loss')
-        plt.legend()
-        plt.grid()
+        ax[1].plot(x, loss, 'b', label='Training loss')
+        ax[1].plot(x, val_loss, 'r', label='Validation loss')
+        ax[1].set_title('Training and validation loss')
+        ax[1].set_xlabel('Epoch', fontsize=14)
+        ax[1].set_ylabel('Loss (categorical crossentropy)', fontsize=14)
+        ax[1].tick_params(axis="x", labelsize=12)
+        ax[1].tick_params(axis="y", labelsize=12)
+        ax[1].set_ylim([0,2])
+        ax[1].set_xticks(np.arange(0, 350, 50))
+        ax[1].legend(fontsize=12)
+        ax[1].grid(linestyle='-.', linewidth=0.7)
+        if save:
+            plt.savefig('plots/'+self.EXP+'_training_perf.png', dpi=500, format = 'png', bbox_inches='tight')
+        return None
