@@ -1,10 +1,12 @@
-from keras.models import Model
-from keras.regularizers import l2
-from keras.constraints import max_norm
-from keras.layers import Input, Dense, Dropout, Flatten, Activation, Concatenate, Layer
-from keras.layers import Conv1D, Add, MaxPooling1D, BatchNormalization
-from keras.layers import Embedding, Bidirectional, GlobalMaxPooling1D, LSTM
-import keras.backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.constraints import max_norm
+from tensorflow.keras.models import *
+from tensorflow.keras.layers import *
+from tensorflow.compat.v1.keras.layers import CuDNNLSTM
+
+import tensorflow.keras.backend as K
+
 
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
@@ -41,7 +43,7 @@ class ARCHITECTURE():
         emb_target = Embedding(21, 128, input_length=1000)(input_target) 
         conv_target_1 = Conv1D(filters=32, kernel_size=3, padding='same', activation='relu')(emb_target)
         pool_target_1 = MaxPooling1D(pool_size=2)(conv_target_1)
-        att_in_target = Bidirectional(LSTM(32, kernel_regularizer=l2(0.01), return_sequences=True, recurrent_regularizer=l2(0.01), bias_regularizer=l2(0.01)))(pool_target_1)
+        att_in_target = Bidirectional(CuDNNLSTM(32, kernel_regularizer=l2(0.01), return_sequences=True, recurrent_regularizer=l2(0.01), bias_regularizer=l2(0.01)))(pool_target_1)
         att_out_target = attention()(att_in_target) 
         return input_target, att_out_target
 
@@ -50,7 +52,7 @@ class ARCHITECTURE():
         emb_drug = Embedding(44, 128, input_length=1000)(input_drug) 
         conv_drug_1 = Conv1D(filters=32, kernel_size=3, padding='same', activation='relu')(emb_drug)
         pool_drug_1 = MaxPooling1D(pool_size=2)(conv_drug_1)
-        att_in_drug = Bidirectional(LSTM(32, kernel_regularizer=l2(0.02), return_sequences=True, recurrent_regularizer=l2(0.02), bias_regularizer=l2(0.02)))(pool_drug_1)
+        att_in_drug = Bidirectional(CuDNNLSTM(32, kernel_regularizer=l2(0.02), return_sequences=True, recurrent_regularizer=l2(0.02), bias_regularizer=l2(0.02)))(pool_drug_1)
         att_out_drug = attention()(att_in_drug)
         return input_drug, att_out_drug
 
