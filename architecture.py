@@ -49,7 +49,7 @@ class ARCHITECTURE():
 
     def drugSeq(self, input_shape):
         input_drug = Input(shape=(input_shape,))
-        emb_drug = Embedding(44, 128, input_length=1000)(input_drug) 
+        emb_drug = Embedding(44, 128, input_length=150)(input_drug) 
         conv_drug_1 = Conv1D(filters=32, kernel_size=3, padding='same', activation='relu')(emb_drug)
         pool_drug_1 = MaxPooling1D(pool_size=2)(conv_drug_1)
         att_in_drug = Bidirectional(CuDNNLSTM(32, kernel_regularizer=l2(0.02), return_sequences=True, recurrent_regularizer=l2(0.02), bias_regularizer=l2(0.02)))(pool_drug_1)
@@ -58,8 +58,8 @@ class ARCHITECTURE():
 
     def drugDes(self, input_shape):
         input_drug_des = Input(shape=(input_shape,))
-        dense_drug_des_1 = Dense(512, activation="relu", kernel_initializer='glorot_normal')(input_drug_des)
-        dense_drug_des_2 = Dense(512, activation="relu", kernel_initializer='glorot_normal')(dense_drug_des_1)
+        dense_drug_des_1 = Dense(256, activation="relu", kernel_initializer='glorot_normal')(input_drug_des)
+        dense_drug_des_2 = Dense(256, activation="relu", kernel_initializer='glorot_normal')(dense_drug_des_1)
         return input_drug_des, dense_drug_des_2
 
     def protDes(self, input_shape):
